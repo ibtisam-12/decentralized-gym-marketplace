@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
 from .models import Product, Category, Cart, CartItem, Order
@@ -38,11 +39,11 @@ class CartModelTests(TestCase):
         self.cart_item = CartItem.objects.create(cart=self.cart, product=self.product, quantity=2)
 
     def test_cart_item_subtotal(self):
-        self.assertEqual(self.cart_item.subtotal, 99.98)
+        self.assertEqual(self.cart_item.subtotal, Decimal('99.98'))
 
     def test_cart_total(self):
         p2 = Product.objects.create(
             name='Creatine', price=29.99, category=self.category, stock_quantity=15, is_active=True
         )
         CartItem.objects.create(cart=self.cart, product=p2, quantity=1)
-        self.assertEqual(self.cart.total, 129.97)
+        self.assertEqual(self.cart.total, Decimal('129.97'))
