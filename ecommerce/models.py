@@ -97,7 +97,8 @@ class Order(models.Model):
         # If status has changed, log to blockchain
         if old_status != self.status:
             try:
-                from blockchain.utils import blockchain
+                from blockchain.utils import get_blockchain
+                blockchain = get_blockchain()
                 from django.contrib.admin.models import LogEntry
                 from django.contrib.contenttypes.models import ContentType
                 from django.contrib.auth.models import User
@@ -132,5 +133,5 @@ class Order(models.Model):
                 blockchain.add_block(data)
             except Exception as e:
                 # Log the error but don't prevent the order from being saved
-                print(f"Error logging to blockchain: {str(e)}")
+                pass
                 # You might want to add proper error logging here

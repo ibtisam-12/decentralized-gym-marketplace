@@ -3,7 +3,6 @@ from .models import Product, Cart, CartItem, Category, Order
 from django.core.mail import send_mail
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
-import stripe
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import UserCreationForm
@@ -11,7 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages  # Add this import
 import re  # Add this import for browser detection
 
-from blockchain.utils import blockchain  # Import the blockchain instance
+from blockchain.utils import get_blockchain  # Import the blockchain instance factory
+blockchain = get_blockchain()
 
 def get_browser_name(user_agent):
     """Extract browser name from user agent string"""
@@ -140,7 +140,7 @@ def contact(request):
                 fail_silently=False,
             )
             return HttpResponse('<h3>Thank you for reaching out! We will get back to you soon.</h3>')
-        except:
+        except Exception:
             return HttpResponse('<h3>Sorry, something went wrong. Please try again later.</h3>')
 
     return render(request, 'ecommerce/contact.html')
@@ -155,40 +155,10 @@ def update_cart(request):
             item.save()
         return redirect('view_cart')
 
-# Remove item from cart
 def remove_from_cart(request, item_id):
     cart_item = CartItem.objects.get(id=item_id)
     cart_item.delete()
     return redirect('view_cart')
-
-# Process checkout: Handle order confirmation and payment
-
-    if request.method == 'POST':
-        # Get user information and payment details
-        full_name = request.POST.get('full_name')
-        email = request.POST.get('email')
-        address = request.POST.get('address')
-        phone = request.POST.get('phone')
-        card_number = request.POST.get('card_number')
-        expiry_date = request.POST.get('expiry_date')
-        cvv = request.POST.get('cvv')
-
-        # Here, implement payment gateway logic (e.g., Stripe/PayPal)
-
-        # After payment is processed, create an order
-        order = Order.objects.create(
-            user=request.user,
-            full_name=full_name,
-            email=email,
-            address=address,
-            phone=phone,
-            total_amount=request.session.get('cart_total'),
-        )
-
-        # Clear cart after checkout
-        Cart.objects.filter(user=request.user).delete()
-
-        return HttpResponse('<h3>Your order has been confirmed! Thank you for shopping with us!</h3>')
 
 
 def order_confirmation(request, order_id):
@@ -268,46 +238,33 @@ def blockchain_admin(request):
 
 def user_register(request):
     if request.method == 'POST':
-        print("POST request received for registration")  # Debug log
         form = UserCreationForm(request.POST)
-        print(f"Form data: {request.POST}")  # Debug log
         
         if form.is_valid():
-            print("Form is valid")  # Debug log
             try:
                 user = form.save()
-                print(f"User created: {user.username}")  # Debug log
                 
-                # Get browser name from user agent
                 user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
                 browser_name = get_browser_name(user_agent)
                 
-                # Log registration event to blockchain
                 data = {
                     'action': 'register',
                     'user': user.username,
-                    'browser': browser_name,  # Store only browser name
+                    'browser': browser_name,
                     'ip_address': request.META.get('REMOTE_ADDR', 'Unknown')
                 }
-                print(f"Attempting to add block to blockchain with data: {data}")  # Debug log
                 
                 try:
-                    blockchain.add_block(data)  # Add the registration block to the blockchain
-                    print("Block successfully added to blockchain")  # Debug log
+                    blockchain.add_block(data)
                     messages.success(request, 'You have registered successfully!')
                 except Exception as e:
-                    print(f"Error adding block to blockchain: {str(e)}")  # Debug log
-                    messages.warning(request, f'Registration successful, but blockchain logging failed: {str(e)}')
+                    messages.warning(request, 'Registration successful, but blockchain logging failed.')
                 
-                login(request, user)  # Automatically log in the user after registration
-                print("User logged in")  # Debug log
-                
-                return redirect('home')  # Redirect to home page after registration
+                login(request, user)
+                return redirect('home')
             except Exception as e:
-                print(f"Error during user creation: {str(e)}")  # Debug log
-                messages.error(request, f'Error during registration: {str(e)}')
+                messages.error(request, 'Error during registration. Please try again.')
         else:
-            print(f"Form errors: {form.errors}")  # Debug log
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{field}: {error}")
@@ -397,7 +354,6 @@ def checkout(request):
         user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
         browser_name = get_browser_name(user_agent)
 
-
         # Log order creation to blockchain with detailed information
         order_data = {
             'action': 'order_placed',
@@ -420,7 +376,7 @@ def checkout(request):
                     'subtotal': str(item.subtotal)
                 } for item in cart.items.all()
             ],
-            'browser_info':browser_name,
+            'browser_info': browser_name,
             'ip_address': request.META.get('REMOTE_ADDR', 'Unknown'),
             'timestamp': str(order.created_at)
         }
