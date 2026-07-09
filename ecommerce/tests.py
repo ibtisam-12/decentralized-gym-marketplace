@@ -11,7 +11,7 @@ class ProductModelTests(TestCase):
             name='Dumbbell Set',
             price=99.99,
             category=self.category,
-            stock=10,
+            stock_quantity=10,
             is_active=True
         )
         self.assertEqual(str(product), 'Dumbbell Set')
@@ -22,7 +22,7 @@ class ProductModelTests(TestCase):
             name='Barbell 20kg',
             price=149.99,
             category=self.category,
-            stock=5,
+            stock_quantity=5,
             is_active=True
         )
         self.assertTrue(product.slug)
@@ -32,7 +32,7 @@ class CartModelTests(TestCase):
         self.user = User.objects.create_user(username='testuser', password='testpass123')
         self.category = Category.objects.create(name='Supplements')
         self.product = Product.objects.create(
-            name='Whey Protein', price=49.99, category=self.category, stock=20, is_active=True
+            name='Whey Protein', price=49.99, category=self.category, stock_quantity=20, is_active=True
         )
         self.cart = Cart.objects.create(user=self.user)
         self.cart_item = CartItem.objects.create(cart=self.cart, product=self.product, quantity=2)
@@ -42,7 +42,7 @@ class CartModelTests(TestCase):
 
     def test_cart_total(self):
         p2 = Product.objects.create(
-            name='Creatine', price=29.99, category=self.category, stock=15, is_active=True
+            name='Creatine', price=29.99, category=self.category, stock_quantity=15, is_active=True
         )
         CartItem.objects.create(cart=self.cart, product=p2, quantity=1)
         self.assertEqual(self.cart.total, 129.97)
